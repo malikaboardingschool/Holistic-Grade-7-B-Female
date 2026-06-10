@@ -15,7 +15,7 @@
   <!-- Babel Standalone CDN -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <!-- Firebase SDK versi Compat (Sangat Stabil di Iframe & Sandboxed Browser) -->
+  <!-- Firebase SDK versi Compat (Sangat Stabil di Iframe, HP, & Berbagai Browser) -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -106,24 +106,49 @@
   <script type="text/babel">
     const { useState, useEffect, useMemo } = React;
 
-    // Inisialisasi Firebase menggunakan versi Compat
+    // =========================================================================
+    // ⚙️ PANDUAN PENGATURAN DATABASE CLOUD MANDIRI (100% GRATIS)
+    // =========================================================================
+    // Agar bisa diinput dari banyak HP/Laptop secara bersamaan dan real-time:
+    // 1. Buka https://console.firebase.google.com/ lalu masuk dengan akun Google Anda.
+    // 2. Klik "Add Project", beri nama (misal: "Rapor Malika") lalu klik lanjut sampai selesai.
+    // 3. Di menu kiri, klik "Build" -> "Firestore Database" -> klik "Create Database".
+    // 4. Pilih lokasi server terdekat (misal: "asia-southeast1" di Singapura), klik "Next".
+    // 5. Pilih "Start in test mode" (agar semua guru bisa langsung mengisi), lalu klik "Create".
+    // 6. Di menu kiri, klik "Build" -> "Authentication" -> "Get Started" -> tab "Sign-in method" -> aktifkan "Anonymous", lalu klik "Save".
+    // 7. Kembali ke halaman utama console, klik ikon "</>" (Web) untuk mendaftarkan aplikasi web.
+    // 8. Beri nama aplikasi Anda, lalu salin (copy) kode konfigurasi firebaseConfig yang muncul.
+    // 9. Ganti nilai "firebaseConfig" di bawah ini dengan milik Anda!
+    // =========================================================================
+    
+    let firebaseConfig = {
+      apiKey: "",          // <--- Masukkan apiKey Anda di sini
+      authDomain: "",      // <--- Masukkan authDomain Anda di sini
+      projectId: "",       // <--- Masukkan projectId Anda di sini
+      storageBucket: "",   // <--- Masukkan storageBucket Anda di sini
+      messagingSenderId: "",// <--- Masukkan messagingSenderId Anda di sini
+      appId: ""            // <--- Masukkan appId Anda di sini
+    };
+
+    // Auto-inject dari environment Canvas (jika ada)
+    if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+      try {
+        const injected = typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
+        if (injected && injected.apiKey) {
+          firebaseConfig = injected;
+        }
+      } catch (e) {
+        console.warn("Gagal mem-parse __firebase_config bawaan:", e);
+      }
+    }
+
     let app, auth, db;
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-    try {
-      let firebaseConfig = {
-        apiKey: "",
-        authDomain: "",
-        projectId: "",
-        storageBucket: "",
-        messagingSenderId: "",
-        appId: ""
-      };
-      if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-        firebaseConfig = typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
-      }
-      
-      if (firebaseConfig.apiKey) {
+    // Inisialisasi Firebase secara aman jika konfigurasi tersedia
+    const isFirebaseConfigured = !!(firebaseConfig && firebaseConfig.apiKey);
+    if (isFirebaseConfigured) {
+      try {
         if (!firebase.apps.length) {
           app = firebase.initializeApp(firebaseConfig);
         } else {
@@ -131,9 +156,9 @@
         }
         auth = firebase.auth();
         db = firebase.firestore();
+      } catch (e) {
+        console.error("Inisialisasi SDK Firebase gagal:", e);
       }
-    } catch (e) {
-      console.error("Firebase Gagal Memuat:", e);
     }
 
     // 10 Pilihan Jawaban Templat untuk Membantu Pengisian Cepat
@@ -224,7 +249,7 @@
       ]
     };
 
-    // Database Default awal jika database cloud belum termuat
+    // Database Default awal jika database cloud belum termuat / tidak dikonfigurasi
     const initialStudents = [
       { 
         id: "1", 
@@ -287,18 +312,18 @@
       { id: "23", nama: "Siti Ziarra Nur Al-Jaelani", nis: "NIS-023/7 A", sas: 81, sat: 84, psikotes: "Potensi kognitif memadai dengan fokus pengerjaan tugas tertulis yang baik.", progres_1s: "Ketekunan menyalin catatan pelajaran sangat rapi dan lengkap.", mapel_unggul: "Hadits, Tauhid", mapel_perlu: "Matematika", ibadah: "Tertib beribadah wajib, rajin mengikuti tadarus qira'at asrama.", tahfizh_juz: 3, tahfizh_detail: "3 Juz (Lancar Juz 30, 29, dan 28)", disiplin: "Baik, selalu datang ke kelas tepat waktu dengan seragam lengkap.", sosial: "Sangat menghormati keputusan kelompok, pendiam namun tulus berteman.", prestasi: "-", fokus: "Meningkatkan latihan soal hitungan eksakta secara terjadwal.", pesan_wali: "Catatan pelajaran ananda Siti Ziarra sangat rapi. Jadikan kerapian belajarmu sebagai modal menguasai ilmu matematika." },
       { id: "24", nama: "Syafa Syavira", nis: "NIS-024/7 A", sas: 85, sat: 88, psikotes: "Kemampuan analisis numerik-logis yang kuat dipadukan dengan kecerdasan visual spasial.", progres_1s: "Mengalami peningkatan pesat dalam pemecahan soal kalkulasi rumit matematika.", mapel_unggul: "Matematika, TIK", mapel_perlu: "Bahasa Arab", ibadah: "Rajin melaksanakan shalat jamaah dan mengamalkan dzikir pagi.", tahfizh_juz: 4, tahfizh_detail: "4 Juz (Lancar Juz 30, 29, 28, dan Al-Mulk)", disiplin: "Sangat disiplin, selalu mengumpulkan tugas tepat waktu dan rapi.", sosial: "Sangat logis dalam berdiskusi, diandalkan teman saat tugas sains kelompok.", prestasi: "Harapan 2 Olimpiade Sains Internal Pondok Pesantren.", fokus: "Meningkatkan kelancaran pelafalan kaidah Nahwu-Shorof Bahasa Arab.", pesan_wali: "Kecerdasan analisis ananda Syafa sangat membanggakan. Tingkatkan penguasaan bahasa Arabmu agar seimbang." },
       { id: "25", nama: "Syakilah Putri Oktavia", nis: "NIS-025/7 A", sas: 82, sat: 85, psikotes: "Menunjukkan kematangan emosi yang stabil, tenang dalam memecahkan masalah praktis.", progres_1s: "Kematangan akademis berjalan sesuai kurikulum, sangat rajin mengulang pelajaran.", mapel_unggul: "Fiqih, IPS", mapel_perlu: "IPA", ibadah: "Sangat istiqamah dalam shalat berjamaah fardhu di asrama.", tahfizh_juz: 3, tahfizh_detail: "3 Juz (Juz 30, 29, dan Surah Al-Waqi'ah)", disiplin: "Baik, penurut kepada ustadzah pembimbing, merawat kebersihan kamar asrama.", sosial: "Anak yang tenang, pendengar yang baik bagi teman yang sedang kesulitan.", prestasi: "-", fokus: "Memperbanyak latihan eksperimen sains dasar di kelas IPA.", pesan_wali: "Sifat tenang ananda Syakilah adalah kelebihan yang baik. Salurkan ketenanganmu untuk belajar sains secara mendalam." },
-      { id: "26", nama: "Syakirah Rizqia Ramadani", nis: "NIS-026/7 A", sas: 83, sat: 86, psikotes: "Kecerdasan linguistik verbal yang unggul, mahir merangkai kata dan berargumen secara sehat.", progres_1s: "Mengalami peningkatan keberanian mengemukakan ide saat diskusi kelompok kelas.", mapel_unggul: "Bahasa Indonesia, Fiqih", mapel_perlu: "Matematika", ibadah: "Shalat lima waktu tertib berjamaah, aktif mengikuti kajian subuh.", tahfizh_juz: 3, tahfizh_detail: "3 Juz (Juz 30, 29, dan 28)", disiplin: "Sangat rapi dalam berpakaian dan sopan menyapa guru di koridor kelas.", sosial: "Sangat ramah, mudah mencairkan suasana pergaulan di asrama kelas.", prestasi: "-", fokus: "Meningkatkan ketelitian pengerjaan soal hitungan pembagian eksak matematika.", pesan_wali: "Gaya bahasamu sangat santun dan lugas, Nak. Pertahankan kelancaran komunikasimu dan asah ketelitian matematika." },
+      { id: "26", nama: "Syakirah Rizqia Ramadani", nis: "NIS-026/7 A", sas: 83, sat: 86, psikotes: "Kecerdasan linguistik verbal yang unggul, mahir merangkai kata dan berargumen secara sehat.", progres_1s: "Mengalami peningkatan keberanian mengemukakan ide saat diskusi kelompok kelas.", mapel_unggul: "Bahasa Indonesia, Fiqih", mapel_perlu: "Matematika", ibadah: "Shalat lima waktu tertib berjamaah, aktif mengikuti kajian subuh.", tahfizh_juz: 3, tahfizh_detail: "3 Juz (Juz 30, 29, dan 28)", disiplin: "Sangat rapi dalam berpakaian dan sopan menyapa guru di koridor kelas.", sosial: "Sangat ramah, mudah mencairkan suasana pergaulan di asrama kelas.", prestasi: "-", fokus: "Meningkatkan ketelitian pengerjaan soal hitungan pembagian eksak matematika.", pesan_wali: "Gaya bahasamu sangat santun dan lukas, Nak. Pertahankan kelancaran komunikasimu dan asah ketelitian matematika." },
       { id: "27", nama: "Tuhfatun Najwa", nis: "NIS-027/7 A", sas: 80, sat: 82, psikotes: "Potensi dasar kognitif stabil dengan tingkat kepatuhan moral keagamaan yang kuat.", progres_1s: "Menunjukkan ketekunan yang konsisten dalam penyelesaian target hafalan surah.", mapel_unggul: "Tauhid, Hadits", mapel_perlu: "Matematika", ibadah: "Sangat rajin tadarus Al-Qur'an setelah maghrib di mushola.", tahfizh_juz: 2, tahfizh_detail: "2 Juz (Juz 30 lancar, Juz 29 pertengahan)", disiplin: "Disiplin baik, mematuhi semua aturan asrama dengan lapang dada.", sosial: "Sangat kooperatif, jarang mengeluh saat gotong royong kebersihan asrama.", prestasi: "-", fokus: "Tingkatkan intensitas latihan pengerjaan persamaan aljabar dasar Matematika.", pesan_wali: "Kepatuhan akhlak ananda Tuhfatun adalah modal kesuksesan yang berkah. Terus asah kecerdasan matematikamu." },
       { id: "28", nama: "Vinca Fitranavira Putri", nis: "NIS-028/7 A", sas: 87, sat: 90, psikotes: "Kapasitas kognitif di atas rata-rata dengan kemampuan memori verbal yang sangat cepat.", progres_1s: "Perkembangan akademis sangat memuaskan di hampir seluruh mata pelajaran.", mapel_unggul: "Bahasa Inggris, IPA, Fiqih", mapel_perlu: "Seni Budaya", ibadah: "Shalat jamaah lima waktu fardhu tertib di baris depan.", tahfizh_juz: 5, tahfizh_detail: "5 Juz (Juz 30, 29, 28, Surah Ar-Rahman, dan Al-Mulk)", disiplin: "Sangat disiplin, mandiri, dan menjaga kebersihan loker pakaian asrama.", sosial: "Sangat ramah, senang memimpin doa belajar bersama kawan sekelas.", prestasi: "Juara 2 Lomba Cerdas Cermat Islami tingkat Pondok Pesantren.", fokus: "Meningkatkan keberanian bereksperimen dalam karya seni lukis kreatif.", pesan_wali: "Ananda Vinca berprestasi luar biasa di bidang akademik. Seimbangkan kecerdasanmu dengan kelembutan rasa seni ya, Nak." },
       { id: "29", nama: "Zhafira Nur Azzahra", nis: "NIS-029/7 A", sas: 81, sat: 83, psikotes: "Kemampuan motorik halus yang teratur dan rapi dalam membuat kerajinan praktis.", progres_1s: "Menunjukkan kemandirian belajar yang semakin kokoh selama satu semester ini.", mapel_unggul: "Seni Budaya, Sirah Nabawiyah", mapel_perlu: "Bahasa Inggris", ibadah: "Shalat jamaah tertib, konsisten mengulang bacaan Al-Qur'an secara mandiri.", tahfizh_juz: 3, tahfizh_detail: "3 Juz (Juz 30, 29, dan Juz 28)", disiplin: "Tertib, selalu merapikan buku-buku pelajaran di dalam tas.", sosial: "Sangat dipercaya teman untuk merancang dekorasi mading kelas.", prestasi: "-", fokus: "Meningkatkan kelancaran percakapan kosakata harian Bahasa Inggris.", pesan_wali: "Karya senimu sangat indah ananda Zhafira. Tingkatkan semangat belajarmu di bahasa asing agar karyamu mendunia." },
       { id: "30", nama: "Tiara Izzatunnisa", nis: "NIS-030/7 A", sas: 84, sat: 88, psikotes: "Kecerdasan emosional dan penyesuaian sosial yang seimbang dengan potensi kognitif baik.", progres_1s: "Perkembangan kemampuan logika pemrograman dasar sains sangat memuaskan.", mapel_unggul: "TIK, IPA, Tajwid", mapel_perlu: "Bahasa Arab", ibadah: "Aktif mengikuti puasa sunnah Senin-Kamis bersama ustadzah pembimbing asrama.", tahfizh_juz: 4, tahfizh_detail: "4 Juz (Lancar Juz 30, 29, 28, dan Al-Kahfi)", disiplin: "Sikap berpakaian bersih dan wangi, memimpin kepedulian sampah kamar.", sosial: "Sangat supel, penengah yang baik jika ada perselisihan paham antar teman.", prestasi: "Harapan 1 Lomba Coding Islami tingkat Pesantren Malika.", fokus: "Meningkatkan hafalan kaidah tata bahasa Sharaf Bahasa Arab.", pesan_wali: "Ananda Tiara memiliki perpaduan karakter sosial dan teknologi yang hebat. Tingkatkan pemahaman tata bahasa Arabmu." },
-      { id: "31", nama: "Kinara Rahmadhania", nis: "NIS-031/7 A", sas: 82, sat: 85, psikotes: "Memiliki ketahanan kerja yang baik, stabil dalam menghadapi tugas yang memerlukan ketelitian.", progres_1s: "Peningkatan nilai tugas harian di kelas eksakta menunjukkan tren naik yang bagus.", mapel_unggul: "Matematika, Tauhid", mapel_perlu: "Bahasa Inggris", ibadah: "Shalat fardhu jamaah selalu di mushola, tertib murojaah setelah subuh.", tahfizh_juz: 3, tahfizh_detail: "3 Juz (Juz 30, 29, dan Al-Kahfi)", disiplin: "Baik, mematuhi seluruh jam belajar wajib di kelas maupun asrama.", sosial: "Sangat santun dan hormat kepada asatidzah serta ramah kepada kawan sekelas.", prestasi: "-", fokus: "Meningkatkan kelancaran percakapan kosakata Bahasa Inggris.", pesan_wali: "Ananda Kinara sangat tertib dalam belajar. Terus kembangkan keberanianmu berbicara dalam Bahasa Inggris." },
+      { id: "31", font: "", nama: "Kinara Rahmadhania", nis: "NIS-031/7 A", sas: 82, sat: 85, psikotes: "Memiliki ketahanan kerja yang baik, stabil dalam menghadapi tugas yang memerlukan ketelitian.", progres_1s: "Peningkatan nilai tugas harian di kelas eksakta menunjukkan tren naik yang bagus.", mapel_unggul: "Matematika, Tauhid", mapel_perlu: "Bahasa Inggris", ibadah: "Shalat fardhu jamaah selalu di mushola, tertib murojaah setelah subuh.", tahfizh_juz: 3, tahfizh_detail: "3 Juz (Juz 30, 29, dan Al-Kahfi)", disiplin: "Baik, mematuhi seluruh jam belajar wajib di kelas maupun asrama.", sosial: "Sangat santun dan hormat kepada asatidzah serta ramah kepada kawan sekelas.", prestasi: "-", fokus: "Meningkatkan kelancaran percakapan kosakata Bahasa Inggris.", pesan_wali: "Ananda Kinara sangat tertib dalam belajar. Terus kembangkan keberanianmu berbicara dalam Bahasa Inggris." },
       { id: "32", nama: "Muthiah Lathifah Azzahra", nis: "NIS-032/7 A", sas: 86, sat: 90, psikotes: "Kapasitas kognitif di atas rata-rata dengan penalaran logis-matematis yang tajam.", progres_1s: "Mengalami lompatan nilai pemahaman matematika dan informatika yang sangat memuaskan.", mapel_unggul: "Matematika, TIK, Fiqih", mapel_perlu: "Seni Budaya", ibadah: "Istiqamah shalat berjamaah fardhu tepat waktu di mushola.", tahfizh_juz: 5, tahfizh_detail: "5 Juz (Juz 30, 29, 28, 27, dan Al-Mulk)", disiplin: "Sangat patuh tata tertib, rapi dan teliti merawat peralatan pribadi di asrama.", sosial: "Sangat disegani teman karena kerendahan hatinya meskipun pandai matematika.", prestasi: "Juara 3 Olimpiade Matematika Pesantren Tingkat Provinsi.", fokus: "Meningkatkan apresiasi seni rupa dan ekspresi estetika kelas seni.", pesan_wali: "Selamat atas prestasimu di olimpiade ananda Muthiah. Terus asah kecerdasanmu dengan tetap rendah hati dan rajin beribadah." },
       { id: "33", nama: "Avikah Rosafitri", nis: "NIS-033/7 A", sas: 83, sat: 87, psikotes: "Potensi dasar kognitif di atas rata-rata, memiliki ketelitian pengerjaan tugas visual yang baik.", progres_1s: "Mengalami kemajuan pemahaman literasi membaca dan menyunting tulisan yang baik.", mapel_unggul: "Bahasa Indonesia, IPA, Tajwid", mapel_perlu: "Bahasa Inggris", ibadah: "Shalat jamaah lima waktu tertib, aktif murojaah hafalan mandiri di asrama.", tahfizh_juz: 4, tahfizh_detail: "4 Juz (Lancar Juz 30, 29, 28, dan Al-Mulk)", disiplin: "Disiplin kelas sangat baik, pakaian selalu disetrika rapi, patuh instruksi ustadzah.", sosial: "Anak yang hangat, mudah diajak berbicara dan senang berbagi bekal dengan kawan.", prestasi: "-", fokus: "Meningkatkan keberanian percakapan menggunakan struktur grammar Bahasa Inggris.", pesan_wali: "Perkembangan belajar ananda Avikah sangat progresif dan menggembirakan. Tingkatkan penguasaan bahasa asingmu ya." }
     ];
 
     function App() {
-      // Offline-First: Pemuatan instan dari localStorage agar tidak pernah blank screen saat koneksi lambat
+      // Offline-First: Memuat data lokal secara instan
       const [students, setStudents] = useState(() => {
         const saved = localStorage.getItem('malika_rapor_students_v3');
         return saved ? JSON.parse(saved) : initialStudents;
@@ -306,9 +331,9 @@
 
       const [user, setUser] = useState(null);
       const [authLoading, setAuthLoading] = useState(true);
-      const [isOffline, setIsOffline] = useState(false);
+      const [isOffline, setIsOffline] = useState(!isFirebaseConfigured);
 
-      // State Pengaturan Global (Semester, Tanggal, dll) yang langsung dimuat dari localStorage
+      // State Pengaturan Global (Semester, Tanggal, dll)
       const [globalSemester, setGlobalSemester] = useState(() => localStorage.getItem('malika_rapor_semester_v3') || "Ganjil 2025/2026");
       const [globalTanggal, setGlobalTanggal] = useState(() => localStorage.getItem('malika_rapor_tanggal_v3') || "19 Desember 2025");
       const [globalWaliKelas, setGlobalWaliKelas] = useState(() => localStorage.getItem('malika_global_wali_kelas_v3') || "Ustadzah Maulana Azka, S.Pd.");
@@ -316,7 +341,7 @@
       const [globalJabatanKS, setGlobalJabatanKS] = useState(() => localStorage.getItem('malika_global_jabatan_ks_v3') || "Kepala SMP");
       const [globalNamaKS, setGlobalNamaKS] = useState(() => localStorage.getItem('malika_global_nama_ks_v3') || "Ustadz Abd. Halim, S.S.I");
 
-      const [activeTab, setActiveTab] = useState('report'); // report, dashboard, database
+      const [activeTab, setActiveTab] = useState('report'); 
       const [selectedStudentId, setSelectedStudentId] = useState("1");
       const [searchQuery, setSearchQuery] = useState("");
       const [bulkImportText, setBulkImportText] = useState("");
@@ -327,24 +352,22 @@
 
       // --- PROTOKOL FIREBASE AUTH & SIGN IN ---
       useEffect(() => {
-        // Safety timeout: jika dalam 5 detik belum terhubung, beralih ke Mode Lokal agar pengguna tidak tertahan spinner
+        if (!isFirebaseConfigured || !auth) {
+          setAuthLoading(false);
+          setIsOffline(true);
+          return;
+        }
+
+        // Batas waktu toleransi 5 detik untuk beralih ke Mode Lokal secara aman
         const timeoutId = setTimeout(() => {
           setAuthLoading((loading) => {
             if (loading) {
-              console.warn("Koneksi Firebase lambat atau terblokir. Beralih ke Mode Lokal.");
               setIsOffline(true);
               return false;
             }
             return loading;
           });
         }, 5000);
-
-        if (!auth) {
-          setAuthLoading(false);
-          setIsOffline(true);
-          clearTimeout(timeoutId);
-          return;
-        }
 
         const initAuth = async () => {
           try {
@@ -382,10 +405,8 @@
       useEffect(() => {
         if (!user || !db || isOffline) return;
 
-        // Strict Path sesuai RULE 1 menggunakan model Firebase Compat Pathing
         const studentsCol = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students');
         
-        // Membuka listener real-time (onSnapshot) dengan error callback
         const unsubscribe = studentsCol.onSnapshot((snapshot) => {
           const list = [];
           snapshot.forEach((doc) => {
@@ -400,7 +421,6 @@
             setStudents(initialStudents);
             localStorage.setItem('malika_rapor_students_v3', JSON.stringify(initialStudents));
           } else {
-            // Urutkan berdasarkan nomor NIS
             list.sort((a, b) => {
               const numA = parseInt(a.nis.replace(/\D/g, '')) || 0;
               const numB = parseInt(b.nis.replace(/\D/g, '')) || 0;
@@ -433,7 +453,6 @@
             if (data.jabatanKS) { setGlobalJabatanKS(data.jabatanKS); localStorage.setItem('malika_global_jabatan_ks_v3', data.jabatanKS); }
             if (data.namaKS) { setGlobalNamaKS(data.namaKS); localStorage.setItem('malika_global_nama_ks_v3', data.namaKS); }
           } else {
-            // Seeding default setting di awan
             settingsDoc.set({
               semester: globalSemester,
               tanggal: globalTanggal,
@@ -451,7 +470,7 @@
         return () => unsubscribe();
       }, [user, isOffline]);
 
-      // Pengeset data setting yang terintegrasi (Menyimpan lokal dulu, lalu mencoba sinkron ke awan)
+      // Pengeset data setting yang terintegrasi
       const updateGlobalSetting = async (key, val) => {
         if (key === 'semester') { setGlobalSemester(val); localStorage.setItem('malika_rapor_semester_v3', val); }
         if (key === 'tanggal') { setGlobalTanggal(val); localStorage.setItem('malika_rapor_tanggal_v3', val); }
@@ -478,7 +497,6 @@
         );
       }, [students, searchQuery]);
 
-      // Pencarian khusus untuk opsi dropdown Rapor agar navigasi lebih cepat
       const [reportSearchQuery, setReportSearchQuery] = useState("");
       const filteredReportOptionStudents = useMemo(() => {
         return students.filter(student => 
@@ -498,7 +516,6 @@
         setAlertConfig({ type: 'confirm', title, message, onConfirm });
       };
 
-      // Navigasi santri sebelumnya/berikutnya
       const handlePrev = () => {
         if (students.length === 0) return;
         if (currentIndex > 0) {
@@ -517,7 +534,6 @@
         }
       };
 
-      // Menyimpan data santriwati (Simpan Lokal Instan + Sinkron Cloud Background)
       const handleSaveStudent = async (studentData) => {
         const studentId = isAddingNew ? Date.now().toString() : studentData.id;
         const updatedPayload = {
@@ -528,7 +544,7 @@
           tahfizh_juz: Number(studentData.tahfizh_juz) || 0
         };
 
-        // 1. Simpan secara Lokal instan agar UI sangat responsif
+        // Simpan lokal instan
         let updatedStudents;
         if (isAddingNew) {
           updatedStudents = [...students, updatedPayload];
@@ -542,12 +558,12 @@
         setEditingStudent(null);
         setIsAddingNew(false);
 
-        // 2. Kirim sinkronisasi ke cloud jika terhubung
+        // Sinkronisasi cloud
         if (user && db && !isOffline) {
           try {
             const studentDocRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(studentId);
             await studentDocRef.set(updatedPayload);
-            triggerAlert(`Data rapor ananda ${studentData.nama} berhasil disimpan dan disinkronkan ke cloud!`, "Sukses Menyimpan");
+            triggerAlert(`Data rapor ananda ${studentData.nama} berhasil disinkronkan ke cloud!`, "Sukses Menyimpan");
           } catch (err) {
             console.error("Gagal sinkronisasi ke cloud:", err);
             triggerAlert(`Data disimpan secara lokal di perangkat ini (Gagal sinkron ke awan).`, "Tersimpan Lokal");
@@ -557,10 +573,8 @@
         }
       };
 
-      // Menghapus data santriwati (Hapus Lokal + Hapus Cloud Background)
       const handleDeleteStudent = (id, name) => {
         triggerConfirm(`Apakah Anda yakin ingin menghapus data santriwati "${name}" secara permanen?`, async () => {
-          // 1. Hapus secara lokal
           const filtered = students.filter(s => String(s.id) !== String(id));
           setStudents(filtered);
           localStorage.setItem('malika_rapor_students_v3', JSON.stringify(filtered));
@@ -569,7 +583,6 @@
             setSelectedStudentId(filtered[0].id);
           }
 
-          // 2. Hapus di cloud jika online
           if (user && db && !isOffline) {
             try {
               const studentDocRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(id);
@@ -585,7 +598,6 @@
         });
       };
 
-      // Ekspor ke CSV / Excel-ready format
       const handleDownloadExcel = () => {
         if (students.length === 0) {
           triggerAlert("Tidak ada data siswa untuk diunduh.", "Data Kosong");
@@ -629,7 +641,6 @@
         document.body.removeChild(link);
       };
 
-      // Template Generator untuk Memudahkan Impor Massal
       const getTemplateTSV = () => {
         const headers = "Nama Lengkap\tNIS/Kelas\tNilai SAS (Ganjil)\tNilai SAT (Genap)\tHasil Psikotes\tProgres 1 Semester\tMapel Unggul\tMapel Perlu Peningkatan\tObservasi Ibadah Harian\tTahfizh (Juz)\tKeterangan Tahfizh\tSikap dan Disiplin\tSosial dan Kepemimpinan\tPrestasi Non-Akademik\tFokus Kelas Selanjutnya\tPesan Wali Kelas";
         const dummyRow = "Aira Fitriani Azzahra\tNIS-001/7 A\t85\t90\tPotensi kognitif logis yang sangat unggul.\tMengalami kemajuan signifikan di kelas.\tMatematika, IPA\tBahasa Inggris\tSangat rajin shalat berjamaah dan ramah.\t4\t4 Juz lancar\tSangat disiplin dan taat.\tMemiliki pengaruh kepemimpinan yang baik.\tJuara 2 Memanah\tFokus pada kematangan tata bahasa arab.\tPertahankan prestasimu nak!";
@@ -638,7 +649,6 @@
         triggerAlert("Template berhasil dimuat di kolom teks di bawah! Anda bisa menyalinnya ke Microsoft Excel atau Google Sheets untuk diisi, atau langsung klik tombol 'Proses & Impor' untuk mencoba mengimpor data contoh tersebut.", "Template Berhasil Dimuat");
       };
 
-      // Proses Impor Data TSV langsung diunggah ke Database Cloud & Lokal
       const handleImportTSV = async () => {
         try {
           const lines = bulkImportText.trim().split("\n");
@@ -699,12 +709,10 @@
             newStudents.push(rowObj);
           }
 
-          // Simpan ke local state
           const updatedStudents = [...students, ...newStudents];
           setStudents(updatedStudents);
           localStorage.setItem('malika_rapor_students_v3', JSON.stringify(updatedStudents));
 
-          // Kirim ke cloud di latar belakang jika online
           if (user && db && !isOffline) {
             try {
               for (const s of newStudents) {
@@ -730,7 +738,6 @@
 
       const handlePrint = () => { window.print(); };
 
-      // Kalkulasi peningkatan nilai rata-rata
       const calculateChange = (student) => {
         if (!student || !student.sas) return { percent: "0", positive: true };
         const diff = student.sat - student.sas;
@@ -740,7 +747,6 @@
 
       const progress = selectedStudent ? calculateChange(selectedStudent) : { percent: "0", positive: true };
 
-      // Hitung data statistik kelas untuk Dashboard
       const classStats = useMemo(() => {
         if (students.length === 0) return null;
         let totalSAS = 0;
@@ -796,22 +802,22 @@
                 <button onClick={() => setActiveTab('dashboard')} className={`px-3.5 py-2 rounded-lg text-xs font-bold tracking-wider uppercase transition-all ${activeTab === 'dashboard' ? 'bg-white text-[#2b3990] shadow' : 'text-indigo-100 hover:bg-[#1f2a70]'}`}>📊 Statistik Kelas</button>
                 <button onClick={() => setActiveTab('database')} className={`px-3.5 py-2 rounded-lg text-xs font-bold tracking-wider uppercase transition-all ${activeTab === 'database' ? 'bg-white text-[#2b3990] shadow' : 'text-indigo-100 hover:bg-[#1f2a70]'}`}>🗃️ Database Spreadsheet</button>
                 
-                {/* Indikator Status Database Awan dengan Safety Timeout Indicator */}
+                {/* Status Koneksi */}
                 <div className="px-2.5 py-1 bg-black/25 rounded-full text-[10px] font-bold flex items-center gap-1.5 border border-white/10">
                   {authLoading ? (
                     <>
                       <span className="w-2 h-2 rounded-full bg-yellow-400 animate-ping"></span>
-                      <span className="text-yellow-200">Mengkoneksikan...</span>
+                      <span className="text-yellow-200">Menghubungkan...</span>
                     </>
                   ) : (user && !isOffline) ? (
                     <>
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                      <span className="text-emerald-300">Awan Terhubung</span>
+                      <span className="text-emerald-300">🟢 Awan Terhubung</span>
                     </>
                   ) : (
                     <>
                       <span className="w-2 h-2 rounded-full bg-rose-400"></span>
-                      <span className="text-rose-300">Mode Lokal (Offline)</span>
+                      <span className="text-rose-300">🟡 Mode Lokal (Offline)</span>
                     </>
                   )}
                 </div>
@@ -821,6 +827,14 @@
 
           {/* Area Konten Utama */}
           <div className="flex-grow max-w-4xl mx-auto w-full p-4 print:p-0">
+
+            {/* INFO PENGGUNAAN DATABASE SINKRON */}
+            {isOffline && !authLoading && (
+              <div className="no-print bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4 text-xs text-amber-900 leading-relaxed shadow-sm">
+                <span className="font-extrabold text-amber-950 block mb-1">💡 Cara Menghubungkan ke 2 Perangkat Sekaligus:</span>
+                Aplikasi saat ini berjalan dalam <strong>Mode Lokal</strong>. Jika Anda ingin menghubungkan aplikasi ini secara real-time dengan HP/laptop ustadzah lain, silakan buat akun <strong>Google Firebase gratis</strong>, salin kunci konfigurasinya, and tempel di kode aplikasi ini (lihat instruksi panduan di dalam skrip kode HTML baris 417). 
+              </div>
+            )}
 
             {/* PANEL PENGATURAN GLOBAL */}
             {activeTab !== 'dashboard' && (
