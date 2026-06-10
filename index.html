@@ -15,6 +15,11 @@
   <!-- Babel Standalone CDN -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+  <!-- Firebase SDK versi Compat (Sangat Stabil di Iframe & Sandboxed Browser) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;500;600;700;800&display=swap');
     body {
@@ -97,16 +102,11 @@
   
   <div id="root"></div>
 
-  <!-- React Code in Babel Script dengan data-type="module" agar mendukung ES Imports -->
-  <script type="text/babel" data-type="module">
+  <!-- React Code in Babel Script -->
+  <script type="text/babel">
     const { useState, useEffect, useMemo } = React;
 
-    // Impor SDK Firebase Modular secara langsung melalui CDN gstatic resmi
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, collection, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    // Inisialisasi Firebase menggunakan variabel global dari environment Canvas
+    // Inisialisasi Firebase menggunakan versi Compat untuk menghindari isu modul ES6 di iframe
     let app, auth, db;
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
@@ -119,9 +119,13 @@
         messagingSenderId: "",
         appId: ""
       };
-      app = initializeApp(firebaseConfig);
-      auth = getAuth(app);
-      db = getFirestore(app);
+      if (!firebase.apps.length) {
+        app = firebase.initializeApp(firebaseConfig);
+      } else {
+        app = firebase.app();
+      }
+      auth = firebase.auth();
+      db = firebase.firestore();
     } catch (e) {
       console.error("Firebase Gagal Memuat:", e);
     }
@@ -255,7 +259,7 @@
         pesan_wali: "Ananda Aisyah adalah mutiara kelas yang berakhlak mulia. Teruslah menjaga hafalan dan tingkatkan ketekunan dalam ilmu eksakta agar menjadi ustadzah yang intelek." 
       },
       { id: "3", nama: "Alya Zahra Nabila", nis: "NIS-003/7 A", sas: 82, sat: 85, psikotes: "Kecerdasan logis-matematis yang sangat baik dan menyukai tantangan berpikir taktis.", progres_1s: "Daya tangkap materi baru sangat baik, khususnya di bidang eksakta.", mapel_unggul: "Matematika, TIK", mapel_perlu: "Seni Budaya", ibadah: "Shalat berjamaah tertib, konsisten mengikuti halaqah pagi.", tahfizh_juz: 3, tahfizh_detail: "3 Juz (Juz 30, 29, and Al-Mulk)", disiplin: "Baik, mematuhi seluruh tata tertib kelas dan asrama.", sosial: "Kooperatif, senang membantu menerangkan materi pelajaran kepada teman sekelas.", prestasi: "-", fokus: "Meningkatkan ekspresi seni dan kreativitas dalam pembuatan karya.", pesan_wali: "Pertahankan semangat belajar ananda Alya Zahra. Potensi eksaktamu sangat besar untuk dikembangkan." },
-      { id: "4", nama: "Ameera Isnain Setiadi", nis: "NIS-004/7 A", sas: 80, sat: 84, psikotes: "Potensi dasar kognitif stabil dengan tingkat kepatuhan moral yang tinggi.", progres_1s: "Konsistensi pengumpulan tugas kelas sangat baik dan selalu rapi.", mapel_unggul: "Tauhid, Fiqih", mapel_perlu: "Bahasa Inggris", ibadah: "Tertib beribadah, aktif dalam dzikir petang berjamaah.", tahfizh_juz: 2, tahfizh_detail: "2 Juz (Lancar Juz 30 dan 29)", disiplin: "Sangat taat aturan, pakaian selalu rapi dan bersih sesuai jadwal.", sosial: "Anak yang sopan, ramah, dan disukai teman asrama karena tidak mudah marah.", prestasi: "-", fokus: "Memperbanyak latihan percakapan (conversation) Bahasa Inggris sehari-hari.", pesan_wali: "Luar biasa perkembangan sikap ananda Ameera. Terus tingkatkan rasa percaya dirimu dalam berbahasa asing." },
+      { id: "4", nama: "Ameera Isnain Setiadi", nis: "NIS-004/7 A", sas: 80, sat: 84, psikotes: "Potensi dasar kognitif stabil dengan tingkat kepatuhan moral yang tinggi.", progres_1s: "Konsistensi pengumpulan tugas kelas sangat baik dan selalu rapi.", mapel_unggul: "Tauhid, Fiqih", mapel_perlu: "Bahasa Inggris", ibadah: "Tertib beribadah, aktif dalam dzikir petang berjamaah.", tahfizh_juz: 2, tahfizh_detail: "2 Juz (Lancar Juz 30 dan 29)", disiplin: "Sangat taat aturan, pakaian selalu rapi and bersih sesuai jadwal.", sosial: "Anak yang sopan, ramah, dan disukai teman asrama karena tidak mudah marah.", prestasi: "-", fokus: "Memperbanyak latihan percakapan (conversation) Bahasa Inggris sehari-hari.", pesan_wali: "Luar biasa perkembangan sikap ananda Ameera. Terus tingkatkan rasa percaya dirimu dalam berbahasa asing." },
       { id: "5", nama: "Aulia Zahra Ibrahim", nis: "NIS-005/7 A", sas: 81, sat: 83, psikotes: "Memiliki koordinasi kinestetik motorik kasar yang sangat prima serta kecerdasan sosial aktif.", progres_1s: "Antusiasme belajar tinggi, terutama saat pembelajaran luar ruangan (outdoor).", mapel_unggul: "Seni Budaya, PJOK", mapel_perlu: "Matematika", ibadah: "Tertib berjamaah, rajin puasa Senin-Kamis.", tahfizh_juz: 3, tahfizh_detail: "3 Juz (Lancar Juz 30, 29, dan hafalan hadits Arba'in)", disiplin: "Disiplin fisik bagus, mandiri dalam mengurus perlengkapan asrama.", sosial: "Memiliki solidaritas kelompok yang tinggi, teman yang setia kawan.", prestasi: "Juara 2 Lomba Basket Antar Kelas Pondok Pesantren Malika.", fokus: "Meningkatkan pemahaman konsep perhitungan dasar pecahan dan aljabar.", pesan_wali: "Ananda Aulia sangat aktif dan sehat. Salurkan energi luar biasamu pada kegiatan yang positif and tingkatkan fokus matematika." },
       { id: "6", nama: "Azizahtun Nazwa", nis: "NIS-006/7 A", sas: 78, sat: 82, psikotes: "Potensi dasar kognitif baik, memiliki ketelitian kerja yang memerlukan ketenangan.", progres_1s: "Menunjukkan kemajuan yang mantap dalam kemandirian belajar di asrama.", mapel_unggul: "Sirah Nabawiyah, Fiqih", mapel_perlu: "Matematika", ibadah: "Shalat lima waktu tertib, aktif murojaah mandiri.", tahfizh_juz: 2, tahfizh_detail: "2 Juz (Juz 30 lancar, Juz 29 pertengahan)", disiplin: "Baik, mandiri dan rajin merapikan tempat tidur.", sosial: "Bisa membaur dengan baik dengan seluruh teman asrama.", prestasi: "-", fokus: "Meningkatkan kecepatan pemecahan soal logika matematika.", pesan_wali: "Semangat belajar ananda Azizah terus meningkat. Pertahankan konsistensi ibadah dan belajarmu, Nak." },
       { id: "7", nama: "Ghina Bilqis Shabreen", nis: "NIS-007/7 A", sas: 85, sat: 88, psikotes: "Kapasitas kognitif umum di atas rata-rata dengan kemampuan analisis spasial yang baik.", progres_1s: "Mengalami perkembangan literasi yang sangat pesat, gemar membaca buku di perpustakaan.", mapel_unggul: "Bahasa Indonesia, IPA", mapel_perlu: "Bahasa Arab", ibadah: "Istiqamah shalat rawatib, tartil tilawahnya sangat baik.", tahfizh_juz: 4, tahfizh_detail: "4 Juz (Lancar Juz 30, 29, 28, dan Surah Sajdah)", disiplin: "Sangat mandiri, jarang melanggar aturan sekecil apa pun.", sosial: "Sangat menghargai perbedaan pendapat, tenang saat berdiskusi kelompok.", prestasi: "Harapan 1 Lomba Cipta Puisi Islami tingkat Pesantren.", fokus: "Memperbanyak hafalan mufrodat (kosakata) Bahasa Arab.", pesan_wali: "Ananda Ghina memiliki potensi akademik yang cemerlang. Perdalam bahasa Arab sebagai bekal memahami kitab suci." },
@@ -264,7 +268,7 @@
       { id: "10", nama: "Hilma Arifa Aulia Rosid", nis: "NIS-010/7 A", sas: 87, sat: 89, psikotes: "Kecerdasan verbal-linguistik yang kuat dan ingatan jangka panjang (long-term memory) yang unggul.", progres_1s: "Sangat komunikatif, memiliki pelafalan (pronunciation) bahasa asing yang natural.", mapel_unggul: "Bahasa Inggris, IPS", mapel_perlu: "Fiqih", ibadah: "Shalat lima waktu berjamaah tertib di baris depan mushola.", tahfizh_juz: 5, tahfizh_detail: "5 Juz (Juz 30, 29, 28, 27, dan Yasin)", disiplin: "Selalu mematuhi peraturan, rajin piket kebersihan kelas.", sosial: "Sangat supel, mudah berteman dengan santriwati dari kelas lain.", prestasi: "Juara 2 Lomba Story Telling Islami tingkat Pesantren.", fokus: "Meningkatkan hafalan matan (teks hukum) pada pelajaran Fiqih.", pesan_wali: "Potensi komunikasi ananda Hilma luar biasa. Gunakan kelebihan berbahasa asingmu untuk berdakwah di masa depan." },
       { id: "11", nama: "Jihan Amira Karim", nis: "NIS-011/7 A", sas: 82, sat: 85, psikotes: "Kecerdasan intrapersonal yang baik, mandiri dan mampu melakukan refleksi diri dengan matang.", progres_1s: "Perkembangan akademik meningkat secara konstan di pertengahan semester.", mapel_unggul: "Tauhid, Bahasa Indonesia", mapel_perlu: "Matematika", ibadah: "Shalat fardhu dan sunnah rawatib berjalan sangat istiqamah.", tahfizh_juz: 3, tahfizh_detail: "3 Juz (Lancar Juz 30, 29, dan Surah Al-Kahfi)", disiplin: "Mandiri, rapi, selalu tidur tepat waktu untuk menghindari terlambat subuh.", sosial: "Sangat menghormati ustadzah, tutur katanya lembut dan sopan.", prestasi: "-", fokus: "Lebih rajin berlatih mengerjakan latihan soal-soal hitungan matematika.", pesan_wali: "Kesopanan ananda Jihan adalah teladan bagi yang lain. Terus asah logika matematikamu dengan rajin berlatih." },
       { id: "12", nama: "Keyla Khanza Ramadhani", nis: "NIS-012/7 A", sas: 84, sat: 86, psikotes: "Kemampuan analisis logika numerik yang tinggi didukung ketekunan kerja yang baik.", progres_1s: "Mengalami peningkatan pemahaman logika yang baik pada pelajaran pemrograman dasar.", mapel_unggul: "Matematika, TIK", mapel_perlu: "Bahasa Inggris", ibadah: "Rajin melaksanakan shalat dhuha dan shalat fardhu tepat waktu.", tahfizh_juz: 4, tahfizh_detail: "4 Juz (Lancar Juz 30, 29, 28, dan Al-Kahfi)", disiplin: "Datang tepat waktu ke kelas, selalu mengumpulkan tugas sebelum tenggat.", sosial: "Suka berdiskusi masalah teknologi, kooperatif dalam tugas tim.", prestasi: "Finalis Olimpiade Matematika Pesantren Malika.", fokus: "Meningkatkan kemampuan menulis esai atau tulisan reflektif dalam Bahasa Inggris.", pesan_wali: "Ananda Keyla cerdas dalam logika matematika. Tingkatkan juga kemampuan bahasa Inggrismu agar wawasan semakin global." },
-      { id: "13", nama: "Nafisa Al Mahira", nis: "NIS-013/7 A", sas: 79, sat: 81, psikotes: "Potensi kognitif rata-rata, menyukai aktivitas praktis dan visual dibanding hafalan teoritis.", progres_1s: "Menunjukkan kreativitas yang tinggi dalam pembuatan tugas proyek seni.", mapel_unggul: "Seni Budaya, IPS", mapel_perlu: "Hadits", ibadah: "Shalat wajib tertib, hafalan doa harian lancar.", tahfizh_juz: 2, tahfizh_detail: "2 Juz (Lancar Juz 30 dan 29)", disiplin: "Baik, berpakaian rapi dan suka menjaga kebersihan asrama.", sosial: "Sangat bersahabat, selalu berusaha menghindari konflik dengan kawan.", prestasi: "-", focus: "Meningkatkan metode hafalan matan hadits dengan cara mencatat berulang.", pesan_wali: "Kreativitas ananda Nafisa sangat baik. Gunakan teknik visualisasi untuk memudahkanmu menghafal hadits-hadits." },
+      { id: "13", nama: "Nafisa Al Mahira", nis: "NIS-013/7 A", sas: 79, sat: 81, psikotes: "Potensi kognitif rata-rata, menyukai aktivitas praktis dan visual dibanding hafalan teoritis.", progres_1s: "Menunjukkan kreativitas yang tinggi dalam pembuatan tugas proyek seni.", mapel_unggul: "Seni Budaya, IPS", mapel_perlu: "Hadits", ibadah: "Shalat wajib tertib, hafalan doa harian lancar.", tahfizh_juz: 2, tahfizh_detail: "2 Juz (Lancar Juz 30 dan 29)", disiplin: "Baik, berpakaian rapi dan suka menjaga kebersihan asrama.", sosial: "Sangat bersahabat, selalu berusaha menghindari konflik dengan kawan.", prestasi: "-", fokus: "Meningkatkan metode hafalan matan hadits dengan cara mencatat berulang.", pesan_wali: "Kreativitas ananda Nafisa sangat baik. Gunakan teknik visualisasi untuk memudahkanmu menghafal hadits-hadits." },
       { id: "14", nama: "Nailatisya Aquina Salsabilla", nis: "NIS-014/7 A", sas: 88, sat: 92, psikotes: "Kapasitas kognitif di atas rata-rata dengan kemampuan memori verbal yang luar biasa tajam.", progres_1s: "Kecepatan menghafal Al-Qur'an dan kosa kata bahasa Arab sangat progresif.", mapel_unggul: "Bahasa Arab, Fiqih, Tajwid", mapel_perlu: "Matematika", ibadah: "Hampir tidak pernah tertinggal takbiratul ihram pertama bersama imam di asrama.", tahfizh_juz: 6, tahfizh_detail: "6 Juz (Juz 30, 29, 28, 27, 26, dan Surah Al-Waqi'ah)", disiplin: "Sangat disiplin, merapikan loker buku and baju secara berkala tanpa disuruh.", sosial: "Sangat dipercaya ustadzah asrama untuk menjadi ketua kebersihan blok.", prestasi: "Juara 1 Lomba Hifzhil Qur'an (MHQ) Internal Malika.", fokus: "Meningkatkan ketelitian pengerjaan soal matematika yang membutuhkan jalan penyelesaian panjang.", pesan_wali: "Masya Allah, ananda Nailatisya memiliki semangat juang hifzhil Qur'an yang membanggakan. Jaga terus semangat ini, Nak." },
       { id: "15", nama: "Nilam Maulina Anggraini", nis: "NIS-015/7 A", sas: 81, sat: 84, psikotes: "Potensi dasar kognitif baik, memiliki minat tinggi pada ilmu alam dan eksplorasi lingkungan.", progres_1s: "Keaktifan bertanya di kelas sains (IPA) sangat menonjol dibanding pelajaran lain.", mapel_unggul: "IPA, TIK", mapel_perlu: "Seni Budaya", ibadah: "Shalat fardhu berjalan baik, rajin tilawah di sela waktu istirahat.", tahfizh_juz: 3, tahfizh_detail: "3 Juz (Juz 30, 29, dan 28)", disiplin: "Sikap disiplin stabil, selalu tertib mengikuti aturan pondok.", sosial: "Mudah diajak kerja sama, pendengar yang baik dalam kelompok.", prestasi: "-", fokus: "Meningkatkan eksplorasi kreativitas seni rupa dan kerajinan tangan.", pesan_wali: "Ananda Nilam memiliki minat sains yang kuat. Terus kembangkan rasa ingin tahumu ke arah riset yang positif." },
       { id: "16", nama: "R. A. Najeela Putri Widiarsa", nis: "NIS-016/7 A", sas: 83, sat: 85, psikotes: "Memiliki ketahanan kerja yang stabil, fokus yang tinggi, serta kemampuan penalaran verbal yang baik.", progres_1s: "Perkembangan akademik stabil dan mengalami peningkatan di tugas akhir praktikum.", mapel_unggul: "Bahasa Indonesia, Tauhid", mapel_perlu: "Matematika", ibadah: "Shalat lima waktu tepat waktu, rutin mengikuti kajian malam asrama.", tahfizh_juz: 3, tahfizh_detail: "3 Juz (Juz 30, 29, dan Yasin)", disiplin: "Sikap berpakaian dan kebersihan diri sangat baik, rambut selalu rapi.", sosial: "Sopan, ramah, dan selalu tersenyum saat berpapasan dengan ustadzah.", prestasi: "-", fokus: "Meningkatkan ketajaman logika aritmetika matematika.", pesan_wali: "Kerapian dan sopan santun ananda Najeela sangat indah dipandang. Tingkatkan belajarmu di matematika ya." },
@@ -312,20 +316,24 @@
 
       // --- PROTOKOL FIREBASE AUTH & SIGN IN ---
       useEffect(() => {
-        if (!auth) return;
+        if (!auth) {
+          setAuthLoading(false);
+          return;
+        }
         const initAuth = async () => {
           try {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-              await signInWithCustomToken(auth, __initial_auth_token);
+              await auth.signInWithCustomToken(__initial_auth_token);
             } else {
-              await signInAnonymously(auth);
+              await auth.signInAnonymously();
             }
           } catch (error) {
             console.error("Autentikasi Firebase Gagal:", error);
+            setAuthLoading(false);
           }
         };
         initAuth();
-        const unsubscribe = onAuthStateChanged(auth, (usr) => {
+        const unsubscribe = auth.onAuthStateChanged((usr) => {
           setUser(usr);
           setAuthLoading(false);
         });
@@ -336,11 +344,11 @@
       useEffect(() => {
         if (!user || !db) return;
 
-        // Strict Path sesuai RULE 1
-        const studentsCol = collection(db, 'artifacts', appId, 'public', 'data', 'students');
+        // Strict Path sesuai RULE 1 menggunakan model Firebase Compat Pathing
+        const studentsCol = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students');
         
         // Membuka listener real-time (onSnapshot) dengan error callback
-        const unsubscribe = onSnapshot(studentsCol, (snapshot) => {
+        const unsubscribe = studentsCol.onSnapshot((snapshot) => {
           const list = [];
           snapshot.forEach((doc) => {
             list.push({ id: doc.id, ...doc.data() });
@@ -349,8 +357,7 @@
           if (list.length === 0) {
             // Seeding otomatis data default awal jika cloud kosong
             initialStudents.forEach(async (s) => {
-              const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', s.id);
-              await setDoc(studentDocRef, s);
+              await studentsCol.doc(s.id).set(s);
             });
           } else {
             // Urutkan berdasarkan nomor NIS
@@ -372,10 +379,10 @@
       useEffect(() => {
         if (!user || !db) return;
 
-        const settingsDoc = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'global');
+        const settingsDoc = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('settings').doc('global');
         
-        const unsubscribe = onSnapshot(settingsDoc, (docSnap) => {
-          if (docSnap.exists()) {
+        const unsubscribe = settingsDoc.onSnapshot((docSnap) => {
+          if (docSnap.exists) {
             const data = docSnap.data();
             if (data.semester) setGlobalSemester(data.semester);
             if (data.tanggal) setGlobalTanggal(data.tanggal);
@@ -385,7 +392,7 @@
             if (data.namaKS) setGlobalNamaKS(data.namaKS);
           } else {
             // Seeding default setting di awan
-            setDoc(settingsDoc, {
+            settingsDoc.set({
               semester: "Ganjil 2025/2026",
               tanggal: "19 Desember 2025",
               waliKelas: "Ustadzah Maulana Azka, S.Pd.",
@@ -405,8 +412,8 @@
       const updateGlobalSettingInCloud = async (key, val) => {
         if (!user || !db) return;
         try {
-          const settingsDoc = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'global');
-          await setDoc(settingsDoc, { [key]: val }, { merge: true });
+          const settingsDoc = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('settings').doc('global');
+          await settingsDoc.set({ [key]: val }, { merge: true });
         } catch (err) {
           console.error("Gagal update setting cloud:", err);
         }
@@ -476,8 +483,8 @@
         };
 
         try {
-          const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', studentId);
-          await setDoc(studentDocRef, updatedPayload);
+          const studentDocRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(studentId);
+          await studentDocRef.set(updatedPayload);
           
           setSelectedStudentId(studentId);
           setEditingStudent(null);
@@ -494,8 +501,8 @@
         triggerConfirm(`Apakah Anda yakin ingin menghapus data santriwati "${name}" secara permanen dari database cloud?`, async () => {
           if (!user || !db) return;
           try {
-            const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', id);
-            await deleteDoc(studentDocRef);
+            const studentDocRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(id);
+            await studentDocRef.delete();
             triggerAlert("Data santriwati berhasil dihapus dari cloud.", "Sukses Terhapus");
           } catch (err) {
             console.error("Gagal menghapus:", err);
@@ -621,8 +628,8 @@
 
           // Menyimpan setiap data baru ke Firestore
           for (const s of newStudents) {
-            const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', s.id);
-            await setDoc(studentDocRef, s);
+            const studentDocRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(s.id);
+            await studentDocRef.set(s);
           }
 
           setShowImportModal(false);
