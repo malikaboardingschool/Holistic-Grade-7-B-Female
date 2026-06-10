@@ -106,12 +106,12 @@
   <script type="text/babel">
     const { useState, useEffect, useMemo } = React;
 
-    // Inisialisasi Firebase menggunakan versi Compat untuk menghindari isu modul ES6 di iframe
+    // Inisialisasi Firebase menggunakan versi Compat
     let app, auth, db;
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
     try {
-      const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+      let firebaseConfig = {
         apiKey: "",
         authDomain: "",
         projectId: "",
@@ -119,13 +119,19 @@
         messagingSenderId: "",
         appId: ""
       };
-      if (!firebase.apps.length) {
-        app = firebase.initializeApp(firebaseConfig);
-      } else {
-        app = firebase.app();
+      if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+        firebaseConfig = typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
       }
-      auth = firebase.auth();
-      db = firebase.firestore();
+      
+      if (firebaseConfig.apiKey) {
+        if (!firebase.apps.length) {
+          app = firebase.initializeApp(firebaseConfig);
+        } else {
+          app = firebase.app();
+        }
+        auth = firebase.auth();
+        db = firebase.firestore();
+      }
     } catch (e) {
       console.error("Firebase Gagal Memuat:", e);
     }
@@ -218,7 +224,7 @@
       ]
     };
 
-    // Database Default awal jika database cloud kosong
+    // Database Default awal jika database cloud belum termuat
     const initialStudents = [
       { 
         id: "1", 
@@ -292,18 +298,23 @@
     ];
 
     function App() {
-      // Inisialisasi State Santri dari database online (jika kosong, gunakan initialStudents)
-      const [students, setStudents] = useState([]);
+      // Offline-First: Pemuatan instan dari localStorage agar tidak pernah blank screen saat koneksi lambat
+      const [students, setStudents] = useState(() => {
+        const saved = localStorage.getItem('malika_rapor_students_v3');
+        return saved ? JSON.parse(saved) : initialStudents;
+      });
+
       const [user, setUser] = useState(null);
       const [authLoading, setAuthLoading] = useState(true);
+      const [isOffline, setIsOffline] = useState(false);
 
-      // State Pengaturan Global (Semester, Tanggal, dll) yang juga akan disinkronisasikan ke Awan
-      const [globalSemester, setGlobalSemester] = useState("Ganjil 2025/2026");
-      const [globalTanggal, setGlobalTanggal] = useState("19 Desember 2025");
-      const [globalWaliKelas, setGlobalWaliKelas] = useState("Ustadzah Maulana Azka, S.Pd.");
-      const [globalWaliKamar, setGlobalWaliKamar] = useState("Ustadzah Sarah Mutia");
-      const [globalJabatanKS, setGlobalJabatanKS] = useState("Kepala SMP");
-      const [globalNamaKS, setGlobalNamaKS] = useState("Ustadz Abd. Halim, S.S.I");
+      // State Pengaturan Global (Semester, Tanggal, dll) yang langsung dimuat dari localStorage
+      const [globalSemester, setGlobalSemester] = useState(() => localStorage.getItem('malika_rapor_semester_v3') || "Ganjil 2025/2026");
+      const [globalTanggal, setGlobalTanggal] = useState(() => localStorage.getItem('malika_rapor_tanggal_v3') || "19 Desember 2025");
+      const [globalWaliKelas, setGlobalWaliKelas] = useState(() => localStorage.getItem('malika_global_wali_kelas_v3') || "Ustadzah Maulana Azka, S.Pd.");
+      const [globalWaliKamar, setGlobalWaliKamar] = useState(() => localStorage.getItem('malika_global_wali_kamar_v3') || "Ustadzah Sarah Mutia");
+      const [globalJabatanKS, setGlobalJabatanKS] = useState(() => localStorage.getItem('malika_global_jabatan_ks_v3') || "Kepala SMP");
+      const [globalNamaKS, setGlobalNamaKS] = useState(() => localStorage.getItem('malika_global_nama_ks_v3') || "Ustadz Abd. Halim, S.S.I");
 
       const [activeTab, setActiveTab] = useState('report'); // report, dashboard, database
       const [selectedStudentId, setSelectedStudentId] = useState("1");
@@ -316,10 +327,25 @@
 
       // --- PROTOKOL FIREBASE AUTH & SIGN IN ---
       useEffect(() => {
+        // Safety timeout: jika dalam 5 detik belum terhubung, beralih ke Mode Lokal agar pengguna tidak tertahan spinner
+        const timeoutId = setTimeout(() => {
+          setAuthLoading((loading) => {
+            if (loading) {
+              console.warn("Koneksi Firebase lambat atau terblokir. Beralih ke Mode Lokal.");
+              setIsOffline(true);
+              return false;
+            }
+            return loading;
+          });
+        }, 5000);
+
         if (!auth) {
           setAuthLoading(false);
+          setIsOffline(true);
+          clearTimeout(timeoutId);
           return;
         }
+
         const initAuth = async () => {
           try {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -329,20 +355,32 @@
             }
           } catch (error) {
             console.error("Autentikasi Firebase Gagal:", error);
+            setIsOffline(true);
             setAuthLoading(false);
           }
         };
         initAuth();
+
         const unsubscribe = auth.onAuthStateChanged((usr) => {
-          setUser(usr);
+          if (usr) {
+            setUser(usr);
+            setIsOffline(false);
+          } else {
+            setIsOffline(true);
+          }
           setAuthLoading(false);
+          clearTimeout(timeoutId);
         });
-        return () => unsubscribe();
+
+        return () => {
+          unsubscribe();
+          clearTimeout(timeoutId);
+        };
       }, []);
 
       // --- SINKRONISASI REAL-TIME DATA SANTRIWATI ---
       useEffect(() => {
-        if (!user || !db) return;
+        if (!user || !db || isOffline) return;
 
         // Strict Path sesuai RULE 1 menggunakan model Firebase Compat Pathing
         const studentsCol = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students');
@@ -359,6 +397,8 @@
             initialStudents.forEach(async (s) => {
               await studentsCol.doc(s.id).set(s);
             });
+            setStudents(initialStudents);
+            localStorage.setItem('malika_rapor_students_v3', JSON.stringify(initialStudents));
           } else {
             // Urutkan berdasarkan nomor NIS
             list.sort((a, b) => {
@@ -367,55 +407,66 @@
               return numA - numB;
             });
             setStudents(list);
+            localStorage.setItem('malika_rapor_students_v3', JSON.stringify(list));
           }
         }, (error) => {
           console.error("Firestore error santriwati:", error);
+          setIsOffline(true);
         });
 
         return () => unsubscribe();
-      }, [user]);
+      }, [user, isOffline]);
 
       // --- SINKRONISASI REAL-TIME PENGATURAN GLOBAL ---
       useEffect(() => {
-        if (!user || !db) return;
+        if (!user || !db || isOffline) return;
 
         const settingsDoc = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('settings').doc('global');
         
         const unsubscribe = settingsDoc.onSnapshot((docSnap) => {
           if (docSnap.exists) {
             const data = docSnap.data();
-            if (data.semester) setGlobalSemester(data.semester);
-            if (data.tanggal) setGlobalTanggal(data.tanggal);
-            if (data.waliKelas) setGlobalWaliKelas(data.waliKelas);
-            if (data.waliKamar) setGlobalWaliKamar(data.waliKamar);
-            if (data.jabatanKS) setGlobalJabatanKS(data.jabatanKS);
-            if (data.namaKS) setGlobalNamaKS(data.namaKS);
+            if (data.semester) { setGlobalSemester(data.semester); localStorage.setItem('malika_rapor_semester_v3', data.semester); }
+            if (data.tanggal) { setGlobalTanggal(data.tanggal); localStorage.setItem('malika_rapor_tanggal_v3', data.tanggal); }
+            if (data.waliKelas) { setGlobalWaliKelas(data.waliKelas); localStorage.setItem('malika_global_wali_kelas_v3', data.waliKelas); }
+            if (data.waliKamar) { setGlobalWaliKamar(data.waliKamar); localStorage.setItem('malika_global_wali_kamar_v3', data.waliKamar); }
+            if (data.jabatanKS) { setGlobalJabatanKS(data.jabatanKS); localStorage.setItem('malika_global_jabatan_ks_v3', data.jabatanKS); }
+            if (data.namaKS) { setGlobalNamaKS(data.namaKS); localStorage.setItem('malika_global_nama_ks_v3', data.namaKS); }
           } else {
             // Seeding default setting di awan
             settingsDoc.set({
-              semester: "Ganjil 2025/2026",
-              tanggal: "19 Desember 2025",
-              waliKelas: "Ustadzah Maulana Azka, S.Pd.",
-              waliKamar: "Ustadzah Sarah Mutia",
-              jabatanKS: "Kepala SMP",
-              namaKS: "Ustadz Abd. Halim, S.S.I"
+              semester: globalSemester,
+              tanggal: globalTanggal,
+              waliKelas: globalWaliKelas,
+              waliKamar: globalWaliKamar,
+              jabatanKS: globalJabatanKS,
+              namaKS: globalNamaKS
             });
           }
         }, (error) => {
           console.error("Firestore error setting:", error);
+          setIsOffline(true);
         });
 
         return () => unsubscribe();
-      }, [user]);
+      }, [user, isOffline]);
 
-      // Helper untuk menulis setting ke Firestore
-      const updateGlobalSettingInCloud = async (key, val) => {
-        if (!user || !db) return;
-        try {
-          const settingsDoc = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('settings').doc('global');
-          await settingsDoc.set({ [key]: val }, { merge: true });
-        } catch (err) {
-          console.error("Gagal update setting cloud:", err);
+      // Pengeset data setting yang terintegrasi (Menyimpan lokal dulu, lalu mencoba sinkron ke awan)
+      const updateGlobalSetting = async (key, val) => {
+        if (key === 'semester') { setGlobalSemester(val); localStorage.setItem('malika_rapor_semester_v3', val); }
+        if (key === 'tanggal') { setGlobalTanggal(val); localStorage.setItem('malika_rapor_tanggal_v3', val); }
+        if (key === 'waliKelas') { setGlobalWaliKelas(val); localStorage.setItem('malika_global_wali_kelas_v3', val); }
+        if (key === 'waliKamar') { setGlobalWaliKamar(val); localStorage.setItem('malika_global_wali_kamar_v3', val); }
+        if (key === 'jabatanKS') { setGlobalJabatanKS(val); localStorage.setItem('malika_global_jabatan_ks_v3', val); }
+        if (key === 'namaKS') { setGlobalNamaKS(val); localStorage.setItem('malika_global_nama_ks_v3', val); }
+
+        if (user && db && !isOffline) {
+          try {
+            const settingsDoc = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('settings').doc('global');
+            await settingsDoc.set({ [key]: val }, { merge: true });
+          } catch (err) {
+            console.error("Gagal update setting cloud:", err);
+          }
         }
       };
 
@@ -466,13 +517,8 @@
         }
       };
 
-      // Menyimpan data santriwati langsung ke database cloud
+      // Menyimpan data santriwati (Simpan Lokal Instan + Sinkron Cloud Background)
       const handleSaveStudent = async (studentData) => {
-        if (!user || !db) {
-          triggerAlert("Gagal terhubung ke database awan.", "Koneksi Terputus");
-          return;
-        }
-
         const studentId = isAddingNew ? Date.now().toString() : studentData.id;
         const updatedPayload = {
           ...studentData,
@@ -482,31 +528,59 @@
           tahfizh_juz: Number(studentData.tahfizh_juz) || 0
         };
 
-        try {
-          const studentDocRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(studentId);
-          await studentDocRef.set(updatedPayload);
-          
-          setSelectedStudentId(studentId);
-          setEditingStudent(null);
-          setIsAddingNew(false);
-          triggerAlert(`Data rapor ananda ${studentData.nama} berhasil disimpan ke database cloud!`, "Sukses Menyimpan");
-        } catch (err) {
-          console.error("Gagal menyimpan ke cloud:", err);
-          triggerAlert("Gagal menyimpan data ke awan. Silakan coba kembali.", "Eror");
+        // 1. Simpan secara Lokal instan agar UI sangat responsif
+        let updatedStudents;
+        if (isAddingNew) {
+          updatedStudents = [...students, updatedPayload];
+        } else {
+          updatedStudents = students.map(s => String(s.id) === String(studentId) ? updatedPayload : s);
+        }
+        setStudents(updatedStudents);
+        localStorage.setItem('malika_rapor_students_v3', JSON.stringify(updatedStudents));
+        
+        setSelectedStudentId(studentId);
+        setEditingStudent(null);
+        setIsAddingNew(false);
+
+        // 2. Kirim sinkronisasi ke cloud jika terhubung
+        if (user && db && !isOffline) {
+          try {
+            const studentDocRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(studentId);
+            await studentDocRef.set(updatedPayload);
+            triggerAlert(`Data rapor ananda ${studentData.nama} berhasil disimpan dan disinkronkan ke cloud!`, "Sukses Menyimpan");
+          } catch (err) {
+            console.error("Gagal sinkronisasi ke cloud:", err);
+            triggerAlert(`Data disimpan secara lokal di perangkat ini (Gagal sinkron ke awan).`, "Tersimpan Lokal");
+          }
+        } else {
+          triggerAlert(`Data rapor ananda ${studentData.nama} berhasil disimpan secara lokal di perangkat ini.`, "Tersimpan Lokal");
         }
       };
 
-      // Menghapus data santriwati dari database cloud
+      // Menghapus data santriwati (Hapus Lokal + Hapus Cloud Background)
       const handleDeleteStudent = (id, name) => {
-        triggerConfirm(`Apakah Anda yakin ingin menghapus data santriwati "${name}" secara permanen dari database cloud?`, async () => {
-          if (!user || !db) return;
-          try {
-            const studentDocRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(id);
-            await studentDocRef.delete();
-            triggerAlert("Data santriwati berhasil dihapus dari cloud.", "Sukses Terhapus");
-          } catch (err) {
-            console.error("Gagal menghapus:", err);
-            triggerAlert("Gagal menghapus data dari cloud.", "Eror");
+        triggerConfirm(`Apakah Anda yakin ingin menghapus data santriwati "${name}" secara permanen?`, async () => {
+          // 1. Hapus secara lokal
+          const filtered = students.filter(s => String(s.id) !== String(id));
+          setStudents(filtered);
+          localStorage.setItem('malika_rapor_students_v3', JSON.stringify(filtered));
+          
+          if (String(selectedStudentId) === String(id) && filtered.length > 0) {
+            setSelectedStudentId(filtered[0].id);
+          }
+
+          // 2. Hapus di cloud jika online
+          if (user && db && !isOffline) {
+            try {
+              const studentDocRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(id);
+              await studentDocRef.delete();
+              triggerAlert("Data santriwati berhasil dihapus dari perangkat dan cloud.", "Sukses Terhapus");
+            } catch (err) {
+              console.error("Gagal menghapus di cloud:", err);
+              triggerAlert("Data dihapus secara lokal (Gagal menghapus di awan).", "Terhapus Lokal");
+            }
+          } else {
+            triggerAlert("Data santriwati berhasil dihapus secara lokal.", "Sukses Terhapus");
           }
         });
       };
@@ -564,9 +638,8 @@
         triggerAlert("Template berhasil dimuat di kolom teks di bawah! Anda bisa menyalinnya ke Microsoft Excel atau Google Sheets untuk diisi, atau langsung klik tombol 'Proses & Impor' untuk mencoba mengimpor data contoh tersebut.", "Template Berhasil Dimuat");
       };
 
-      // Proses Impor Data TSV langsung diunggah ke Database Cloud
+      // Proses Impor Data TSV langsung diunggah ke Database Cloud & Lokal
       const handleImportTSV = async () => {
-        if (!user || !db) return;
         try {
           const lines = bulkImportText.trim().split("\n");
           if (lines.length < 2) {
@@ -626,18 +699,32 @@
             newStudents.push(rowObj);
           }
 
-          // Menyimpan setiap data baru ke Firestore
-          for (const s of newStudents) {
-            const studentDocRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(s.id);
-            await studentDocRef.set(s);
+          // Simpan ke local state
+          const updatedStudents = [...students, ...newStudents];
+          setStudents(updatedStudents);
+          localStorage.setItem('malika_rapor_students_v3', JSON.stringify(updatedStudents));
+
+          // Kirim ke cloud di latar belakang jika online
+          if (user && db && !isOffline) {
+            try {
+              for (const s of newStudents) {
+                const studentDocRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(s.id);
+                await studentDocRef.set(s);
+              }
+              triggerAlert(`Berhasil mengimpor ${newStudents.length} data santriwati ke database cloud!`, "Impor Sukses");
+            } catch (err) {
+              console.error("Gagal impor TSV ke cloud:", err);
+              triggerAlert(`Berhasil mengimpor ${newStudents.length} data secara lokal (gagal sinkronisasi awan).`, "Impor Lokal");
+            }
+          } else {
+            triggerAlert(`Berhasil mengimpor ${newStudents.length} data secara lokal.`, "Impor Lokal");
           }
 
           setShowImportModal(false);
           setBulkImportText("");
-          triggerAlert(`Berhasil mengimpor ${newStudents.length} data santriwati ke database cloud!`, "Impor Sukses");
         } catch (err) {
-          console.error("Gagal impor TSV ke cloud:", err);
-          triggerAlert("Gagal memproses data impor ke database cloud.", "Kesalahan");
+          console.error("Gagal impor TSV:", err);
+          triggerAlert("Gagal memproses data impor ke database.", "Kesalahan");
         }
       };
 
@@ -709,22 +796,22 @@
                 <button onClick={() => setActiveTab('dashboard')} className={`px-3.5 py-2 rounded-lg text-xs font-bold tracking-wider uppercase transition-all ${activeTab === 'dashboard' ? 'bg-white text-[#2b3990] shadow' : 'text-indigo-100 hover:bg-[#1f2a70]'}`}>📊 Statistik Kelas</button>
                 <button onClick={() => setActiveTab('database')} className={`px-3.5 py-2 rounded-lg text-xs font-bold tracking-wider uppercase transition-all ${activeTab === 'database' ? 'bg-white text-[#2b3990] shadow' : 'text-indigo-100 hover:bg-[#1f2a70]'}`}>🗃️ Database Spreadsheet</button>
                 
-                {/* Indikator Status Database Awan */}
+                {/* Indikator Status Database Awan dengan Safety Timeout Indicator */}
                 <div className="px-2.5 py-1 bg-black/25 rounded-full text-[10px] font-bold flex items-center gap-1.5 border border-white/10">
                   {authLoading ? (
                     <>
                       <span className="w-2 h-2 rounded-full bg-yellow-400 animate-ping"></span>
                       <span className="text-yellow-200">Mengkoneksikan...</span>
                     </>
-                  ) : user ? (
+                  ) : (user && !isOffline) ? (
                     <>
-                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                       <span className="text-emerald-300">Awan Terhubung</span>
                     </>
                   ) : (
                     <>
                       <span className="w-2 h-2 rounded-full bg-rose-400"></span>
-                      <span className="text-rose-200">Awan Terputus</span>
+                      <span className="text-rose-300">Mode Lokal (Offline)</span>
                     </>
                   )}
                 </div>
@@ -747,27 +834,27 @@
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 mb-1">Semester</label>
-                    <input type="text" value={globalSemester} onChange={(e) => { setGlobalSemester(e.target.value); updateGlobalSettingInCloud('semester', e.target.value); }} className="w-full px-2 py-1 bg-slate-50 border rounded-lg text-xs font-bold focus:ring-1 focus:ring-indigo-500 focus:outline-none"/>
+                    <input type="text" value={globalSemester} onChange={(e) => updateGlobalSetting('semester', e.target.value)} className="w-full px-2 py-1 bg-slate-50 border rounded-lg text-xs font-bold focus:ring-1 focus:ring-indigo-500 focus:outline-none"/>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 mb-1">Tanggal Rapor</label>
-                    <input type="text" value={globalTanggal} onChange={(e) => { setGlobalTanggal(e.target.value); updateGlobalSettingInCloud('tanggal', e.target.value); }} className="w-full px-2 py-1 bg-slate-50 border rounded-lg text-xs font-bold focus:ring-1 focus:ring-indigo-500 focus:outline-none"/>
+                    <input type="text" value={globalTanggal} onChange={(e) => updateGlobalSetting('tanggal', e.target.value)} className="w-full px-2 py-1 bg-slate-50 border rounded-lg text-xs font-bold focus:ring-1 focus:ring-indigo-500 focus:outline-none"/>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 mb-1">Wali Kelas</label>
-                    <input type="text" value={globalWaliKelas} onChange={(e) => { setGlobalWaliKelas(e.target.value); updateGlobalSettingInCloud('waliKelas', e.target.value); }} className="w-full px-2 py-1 bg-slate-50 border rounded-lg text-xs font-bold focus:ring-1 focus:ring-indigo-500 focus:outline-none"/>
+                    <input type="text" value={globalWaliKelas} onChange={(e) => updateGlobalSetting('waliKelas', e.target.value)} className="w-full px-2 py-1 bg-slate-50 border rounded-lg text-xs font-bold focus:ring-1 focus:ring-indigo-500 focus:outline-none"/>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 mb-1">Wali Kamar</label>
-                    <input type="text" value={globalWaliKamar} onChange={(e) => { setGlobalWaliKamar(e.target.value); updateGlobalSettingInCloud('waliKamar', e.target.value); }} className="w-full px-2 py-1 bg-slate-50 border rounded-lg text-xs font-bold focus:ring-1 focus:ring-indigo-500 focus:outline-none"/>
+                    <input type="text" value={globalWaliKamar} onChange={(e) => updateGlobalSetting('waliKamar', e.target.value)} className="w-full px-2 py-1 bg-slate-50 border rounded-lg text-xs font-bold focus:ring-1 focus:ring-indigo-500 focus:outline-none"/>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 mb-1">Jabatan TTD</label>
-                    <input type="text" value={globalJabatanKS} onChange={(e) => { setGlobalJabatanKS(e.target.value); updateGlobalSettingInCloud('jabatanKS', e.target.value); }} className="w-full px-2 py-1 bg-slate-50 border rounded-lg text-xs font-bold focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="Kepala SMP"/>
+                    <input type="text" value={globalJabatanKS} onChange={(e) => updateGlobalSetting('jabatanKS', e.target.value)} className="w-full px-2 py-1 bg-slate-50 border rounded-lg text-xs font-bold focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="Kepala SMP"/>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 mb-1">Nama TTD (KS)</label>
-                    <input type="text" value={globalNamaKS} onChange={(e) => { setGlobalNamaKS(e.target.value); updateGlobalSettingInCloud('namaKS', e.target.value); }} className="w-full px-2 py-1 bg-slate-50 border rounded-lg text-xs font-bold focus:ring-1 focus:ring-indigo-500 focus:outline-none"/>
+                    <input type="text" value={globalNamaKS} onChange={(e) => updateGlobalSetting('namaKS', e.target.value)} className="w-full px-2 py-1 bg-slate-50 border rounded-lg text-xs font-bold focus:ring-1 focus:ring-indigo-500 focus:outline-none"/>
                   </div>
                 </div>
               </div>
